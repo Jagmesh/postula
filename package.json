@@ -1,0 +1,24 @@
+{
+  "name": "telegram-forward-bot",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsc && node dist/index.js",
+    "dev": "ts-node-dev --respawn src/index.ts",
+
+    "dockerCreate": "docker image build . -t cr.selcloud.ru/jagmesh-vm/valigator:latest",
+    "dockerPush": "docker push cr.selcloud.ru/jagmesh-vm/valigator:latest",
+    "dockerUp": "npm run build && npm run dockerCreate && npm run dockerPush"
+  },
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "jblog": "^0.0.5",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
+  }
+}
