@@ -1,6 +1,12 @@
 export interface PendingMessage {
-    originalChatId: number | string;
-    originalMessageId: number;
-    forwardedMsgId: number;
-    actionsMsgId: number;
+    original: {
+        chatId:  number | string;
+        messageId:  number;
+        caption: string;
+        contentFileId: string;
+    }
+    review: {
+        messageId:  number;
+        buttonsMsgId:  number;
+    }
 }

@@ -1,11 +1,17 @@
 import 'dotenv/config';
 import Logger from "jblog";
 
-export const BOT_TOKEN = process.env.BOT_TOKEN!;
-export const YOUR_TELEGRAM_ID = Number(process.env.YOUR_TELEGRAM_ID);
-export const TARGET_CHANNEL_ID = process.env.TARGET_CHANNEL_ID!;
-
-if (!BOT_TOKEN || !YOUR_TELEGRAM_ID || !TARGET_CHANNEL_ID) {
-    new Logger({scopes: ['CONFIG']}).error('Check .env — BOT_TOKEN, YOUR_TELEGRAM_ID, TARGET_CHANNEL_ID are required');
-    process.exit(1);
+const CONFIG = {
+    TG_BOT_TOKEN: process.env.TG_BOT_TOKEN!,
+    TG_SUGGESTION_CHAT_ID: Number(process.env.TG_SUGGESTION_CHAT_ID),
+    TG_TARGET_CHANNEL_ID: process.env.TG_TARGET_CHANNEL_ID!,
 }
+
+for (const configKey in CONFIG) {
+    if(CONFIG[configKey as keyof typeof CONFIG] === undefined) {
+        new Logger({scopes: ['CONFIG']}).error(`Check .env — ${configKey} is required`);
+        process.exit(1);
+    }
+}
+
+export {CONFIG}

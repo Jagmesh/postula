@@ -1,6 +1,6 @@
 import { Context } from 'telegraf';
-import { TARGET_CHANNEL_ID, YOUR_TELEGRAM_ID } from '../../config.js';
-import { pendingMessagesMap, REACTIONS } from '../store.js';
+import {CONFIG} from '../../config.js';
+import { pendingMessagesMap, REACTION } from '../store.js';
 
 function parseCallbackData(ctx: Context): string | null {
     const data = ctx.callbackQuery && 'data' in ctx.callbackQuery
@@ -17,35 +17,34 @@ export async function handleAccept(ctx: Context): Promise<void> {
         await ctx.answerCbQuery('Некорректные данные');
         return;
     }
-    const key = `forwardedId:${forwardedId}`;
-    console.log('key:', key)
-    console.log('pendingMessagesMap', pendingMessagesMap)
-    const data = pendingMessagesMap.get(key);
+
+    const data = pendingMessagesMap.get(forwardedId);
     if (!data) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
     }
+    const { original, review } = data;
 
     await Promise.all([
-        ctx.telegram.deleteMessage(YOUR_TELEGRAM_ID, data.forwardedMsgId),
-        ctx.telegram.deleteMessage(YOUR_TELEGRAM_ID, data.actionsMsgId)
+        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.messageId),
+        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.buttonsMsgId)
     ]);
 
+
     await ctx.telegram.setMessageReaction(
-        data.originalChatId,
-        data.originalMessageId,
-        REACTIONS.accept,
+        original.chatId,
+        original.messageId,
+        REACTION.ACCEPT,
         true
     );
 
-    await ctx.telegram.forwardMessage(
-        TARGET_CHANNEL_ID,
-        data.originalChatId,
-        data.originalMessageId
-    );
+    await ctx.telegram.sendAnimation(CONFIG.TG_TARGET_CHANNEL_ID, original.contentFileId, {
+        caption: original.caption,
+        parse_mode: 'HTML'
+    });
 
     await ctx.answerCbQuery('👍 Принято и отправлено в канал');
-    pendingMessagesMap.delete(key);
+    pendingMessagesMap.delete(forwardedId);
 }
 
 export async function handleReject(ctx: Context) {
@@ -54,25 +53,26 @@ export async function handleReject(ctx: Context) {
         await ctx.answerCbQuery('Некорректные данные');
         return;
     }
-    const key = `forwardedId:${forwardedId}`;
-    const data = pendingMessagesMap.get(key);
+
+    const data = pendingMessagesMap.get(forwardedId);
     if (!data) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
     }
+    const { original, review } = data;
 
     await Promise.all([
-        ctx.telegram.deleteMessage(YOUR_TELEGRAM_ID, data.forwardedMsgId),
-        ctx.telegram.deleteMessage(YOUR_TELEGRAM_ID, data.actionsMsgId)
+        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.messageId),
+        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.buttonsMsgId)
     ]);
 
     await ctx.telegram.setMessageReaction(
-        data.originalChatId,
-        data.originalMessageId,
-        REACTIONS.reject,
+        original.chatId,
+        original.messageId,
+        REACTION.ACCEPT,
         true
     );
 
     await ctx.answerCbQuery('👎 Отклонено');
-    pendingMessagesMap.delete(key);
+    pendingMessagesMap.delete(forwardedId);
 }

@@ -1,6 +1,6 @@
 {
-  "name": "telegram-forward-bot",
-  "version": "1.0.0",
+  "name": "postula",
+  "version": "0.0.1",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -8,8 +8,8 @@
     "start": "tsc && node dist/index.js",
     "dev": "ts-node-dev --respawn src/index.ts",
 
-    "dockerCreate": "docker image build . -t cr.selcloud.ru/jagmesh-vm/valigator:latest",
-    "dockerPush": "docker push cr.selcloud.ru/jagmesh-vm/valigator:latest",
+    "dockerCreate": "docker image build . -t cr.selcloud.ru/jagmesh-vm/postula:latest",
+    "dockerPush": "docker push cr.selcloud.ru/jagmesh-vm/postula:latest",
     "dockerUp": "npm run build && npm run dockerCreate && npm run dockerPush"
   },
   "dependencies": {
