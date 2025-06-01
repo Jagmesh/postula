@@ -8,7 +8,6 @@ import {CONFIG} from "../../config.js";
 const log = new Logger({scopes: ['HANDLER', 'MESSAGE']})
 
 async function processIncomingMessage(ctx: Context, message: Message.AnimationMessage) {
-    log.info("Received message:", message);
     const from = message.from!;
     const chat = ctx.chat!;
 

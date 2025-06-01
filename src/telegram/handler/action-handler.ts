@@ -69,7 +69,7 @@ export async function handleReject(ctx: Context) {
     await ctx.telegram.setMessageReaction(
         original.chatId,
         original.messageId,
-        REACTION.ACCEPT,
+        REACTION.REJECT,
         true
     );
 

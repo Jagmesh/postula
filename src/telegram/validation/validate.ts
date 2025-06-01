@@ -8,7 +8,10 @@ export async function validateAnimationMsg(ctx: Context, next: () => Promise<voi
     if (!message || message.chat.type !== 'private') {
         return log.error('Invalid message');
     }
+    log.info("Received message:", message);
     const {id} = ctx.chat!;
+
+    if(message?.from?.username === ctx.me) return log.error('The bot itself has sent this message');
     const from = message.from?.username ? `@${message.from.username}` : `ID: ${message.from?.id}`
 
     if (!('animation' in message)) {
