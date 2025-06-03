@@ -8,6 +8,7 @@ export const TG_TEXT = {
 function prepareEntryMessage(): string {
     return 'Здарова!\n\n' +
         `Это бот предлошки для ${CONFIG.TG_TARGET_CHANNEL_ID} под авторством @jagmesh\n\n` +
+        `<i>[БОТ В АЛЬФЕ, МНОГОЕ БУДЕТ ДОРАБАТЫВАТЬСЯ, МНОГОЕ МОЖЕТ БЫТЬ СЛОМАНО]</i>\n\n`+
         '<b>Кидай посты в формате Гиф + Текст\n\n</b>' +
         '<blockquote>Статусы:\n' +
         `${REACTION.WAIT[0].emoji} — предложка принята и находится на рассмотрении\n` +

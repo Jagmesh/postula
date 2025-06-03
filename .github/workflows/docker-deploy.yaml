@@ -1,0 +1,20 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    uses: jagmesh/ci-cd/.github/workflows/docker-deploy.yml@main
+    with:
+      image_name: cr.selcloud.ru/jagmesh-vm/allerter
+      container_name: allerter
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      REGISTRY_HOST: ${{ secrets.REGISTRY_HOST }}
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
+      ENVARS: ${{ secrets.ENVARS }}

@@ -6,11 +6,7 @@
   "scripts": {
     "build": "tsc",
     "start": "tsc && node dist/index.js",
-    "dev": "ts-node-dev --respawn src/index.ts",
-
-    "dockerCreate": "docker image build . -t cr.selcloud.ru/jagmesh-vm/postula:latest",
-    "dockerPush": "docker push cr.selcloud.ru/jagmesh-vm/postula:latest",
-    "dockerUp": "npm run build && npm run dockerCreate && npm run dockerPush"
+    "dev": "ts-node-dev --respawn src/index.ts"
   },
   "dependencies": {
     "dotenv": "^16.5.0",
