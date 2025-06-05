@@ -1,6 +1,8 @@
 import { Context } from 'telegraf';
-import {CONFIG} from '../../config.js';
-import { pendingMessagesMap, REACTION } from '../store.js';
+import {CONFIG} from '../../../config.js';
+import {  GET_POST_KEY, REACTION } from '../../const.js';
+import { Redis } from '../../../redis/redis.service.js';
+import { PendingMessage } from '../../type';
 
 function parseCallbackData(ctx: Context): string | null {
     const data = ctx.callbackQuery && 'data' in ctx.callbackQuery
@@ -12,13 +14,13 @@ function parseCallbackData(ctx: Context): string | null {
 }
 
 export async function handleAccept(ctx: Context): Promise<void> {
-    const forwardedId = parseCallbackData(ctx);
-    if (!forwardedId) {
+    const reviewMsgID = parseCallbackData(ctx);
+    if (!reviewMsgID) {
         await ctx.answerCbQuery('Некорректные данные');
         return;
     }
 
-    const data = pendingMessagesMap.get(forwardedId);
+    const data = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
     if (!data) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
@@ -44,17 +46,17 @@ export async function handleAccept(ctx: Context): Promise<void> {
     });
 
     await ctx.answerCbQuery('👍 Принято и отправлено в канал');
-    pendingMessagesMap.delete(forwardedId);
+    await Redis.getInstance().delete(GET_POST_KEY(reviewMsgID));
 }
 
 export async function handleReject(ctx: Context) {
-    const forwardedId = parseCallbackData(ctx);
-    if (!forwardedId) {
+    const reviewMsgID = parseCallbackData(ctx);
+    if (!reviewMsgID) {
         await ctx.answerCbQuery('Некорректные данные');
         return;
     }
 
-    const data = pendingMessagesMap.get(forwardedId);
+    const data = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
     if (!data) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
@@ -74,5 +76,5 @@ export async function handleReject(ctx: Context) {
     );
 
     await ctx.answerCbQuery('👎 Отклонено');
-    pendingMessagesMap.delete(forwardedId);
+    await Redis.getInstance().delete(GET_POST_KEY(reviewMsgID));
 }

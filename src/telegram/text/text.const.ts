@@ -1,5 +1,5 @@
 import {CONFIG} from "../../config.js";
-import {REACTION} from "../store.js"
+import {REACTION} from "../const.js"
 
 export const TG_TEXT = {
     ENTRY_MESSAGE: prepareEntryMessage()

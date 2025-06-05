@@ -1,11 +1,9 @@
 import {Context, Markup} from 'telegraf';
-import {pendingMessagesMap, REACTION} from '../store.js';
-import type {PendingMessage} from '../type';
-import Logger from "jblog";
+import {GET_POST_KEY, REACTION} from '../../const.js';
+import type {PendingMessage} from '../../type';
 import {Message} from 'telegraf/types';
-import {CONFIG} from "../../config.js";
-
-const log = new Logger({scopes: ['HANDLER', 'MESSAGE']})
+import {CONFIG} from "../../../config.js";
+import {Redis} from "../../../redis/redis.service.js";
 
 async function processIncomingMessage(ctx: Context, message: Message.AnimationMessage) {
     const from = message.from!;
@@ -43,7 +41,8 @@ async function processIncomingMessage(ctx: Context, message: Message.AnimationMe
             buttonsMsgId: actionsMsg.message_id
         }
     };
-    pendingMessagesMap.set(String(reviewMsg.message_id), pending);
+    
+    await Redis.getInstance().set(GET_POST_KEY(reviewMsg.message_id), pending)
 }
 
 export async function handleMessage(ctx: Context) {

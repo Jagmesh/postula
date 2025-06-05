@@ -1,6 +1,6 @@
 import {Context} from "telegraf";
 import Logger from "jblog";
-import {REACTION} from "../store.js";
+import {REACTION} from "../const.js";
 
 const log = new Logger({scopes: ['VALIDATION']})
 export async function validateAnimationMsg(ctx: Context, next: () => Promise<void>) {

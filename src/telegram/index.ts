@@ -1,22 +1,33 @@
-import {Telegraf} from "telegraf";
+import {Telegraf, Context} from "telegraf";
 import Logger from "jblog";
-import {CONFIG} from "../config.js";
-import {handleEditedMessage, handleMessage} from "./handler/message-handler.js";
-import {handleAccept, handleReject} from "./handler/action-handler.js";
+import {handleEditedMessage, handleMessage} from "./handler/on/message-handler.js";
+import {handleAccept, handleReject} from "./handler/action/action-handler.js";
 import {validateAnimationMsg} from "./validation/validate.js";
 import {commandStart} from "./handler/command/start.command.js";
+import { CONFIG } from "../config.js";
 
-export function initTgBot() {
-    const bot = new Telegraf(CONFIG.TG_BOT_TOKEN);
-    const log = new Logger({scopes: ['BOOTSTRAP']})
+export class Telegram {
+    private readonly log: Logger = new Logger({scopes: [Telegram.name.toUpperCase()]});
+    private readonly bot: Telegraf;
 
-    bot.command('start', commandStart)
+    constructor(botToken: string) {
+        this.bot = new Telegraf(botToken);
+    }
 
-    bot.on('message', validateAnimationMsg, handleMessage);
-    bot.on('edited_message', validateAnimationMsg, handleEditedMessage);
+    async init() {
+        this.bot.catch((err: unknown, ctx: Context) => {
+            this.log.error(`Error occured: ${err}`)
+            this.bot.telegram.sendMessage(CONFIG.TG_SUGGESTION_CHAT_ID, `Error occured: ${err}`)
+        })
 
-    bot.action(/accept:(\d+)/, handleAccept);
-    bot.action(/reject:(\d+)/, handleReject);
+        this.bot.command('start', commandStart)
 
-    bot.launch(() => { log.success('Bot started successfully')})
+        this.bot.on('message', validateAnimationMsg, handleMessage);
+        this.bot.on('edited_message', validateAnimationMsg, handleEditedMessage);
+
+        this.bot.action(/accept:(\d+)/, handleAccept);
+        this.bot.action(/reject:(\d+)/, handleReject);
+
+        await this.bot.launch(() => { this.log.success('Bot started successfully')})
+    }
 }

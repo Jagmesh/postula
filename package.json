@@ -11,6 +11,7 @@
   "dependencies": {
     "dotenv": "^16.5.0",
     "jblog": "^0.0.5",
+    "redis": "^5.5.5",
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
