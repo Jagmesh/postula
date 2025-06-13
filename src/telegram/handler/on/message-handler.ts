@@ -12,29 +12,33 @@ async function processIncomingMessage(ctx: Context, message: Message.AnimationMe
     await ctx.telegram.setMessageReaction(chat.id, message.message_id, REACTION.WAIT, true);
 
     const origCaption = typeof message.caption === 'string' && message.caption.trim().length > 0 ? message.caption.trim() : ''
-    const caption = `${origCaption}\n\n👤 Автор: ${message.from?.username ? `@${message.from.username}` : `ID: ${message.from?.id}`}`;
-
     const reviewMsg = await ctx.telegram.sendAnimation(CONFIG.TG_SUGGESTION_CHAT_ID, message.animation.file_id, {
-        caption,
-        parse_mode: 'HTML'
+        caption: origCaption,
+        parse_mode: 'HTML',
     });
 
     const headerText = `📥 Пост от @${from.username || from.first_name} (id: ${from.id} / id сообщения: ${message.message_id}):`
     const actionsMsg = await ctx.telegram.sendMessage(
         CONFIG.TG_SUGGESTION_CHAT_ID,
         headerText,
-        Markup.inlineKeyboard([
-            Markup.button.callback('👍 Принять', `accept:${reviewMsg.message_id}`),
-            Markup.button.callback('👎 Отклонить', `reject:${reviewMsg.message_id}`)
-        ])
+        {
+            reply_parameters: {
+                message_id: reviewMsg.message_id
+            },
+            ...Markup.inlineKeyboard([
+                Markup.button.callback('👍 Принять', `accept:${reviewMsg.message_id}`),
+                Markup.button.callback('👎 Отклонить', `reject:${reviewMsg.message_id}`)
+            ])
+        }
     );
 
     const pending: PendingMessage = {
         original: {
             chatId: chat.id,
             messageId: message.message_id,
-            caption: caption,
-            contentFileId: message.animation.file_id
+            caption: origCaption,
+            contentFileId: message.animation.file_id,
+            username: message.from?.username ? `@${message.from.username}` : `ID: ${message.from?.id}`
         },
         review: {
             messageId: reviewMsg.message_id,

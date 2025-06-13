@@ -3,6 +3,7 @@ import {CONFIG} from '../../../config.js';
 import {  GET_POST_KEY, REACTION } from '../../const.js';
 import { Redis } from '../../../redis/redis.service.js';
 import { PendingMessage } from '../../type';
+import {ReactionTypeEmoji} from "telegraf/types";
 
 function parseCallbackData(ctx: Context): string | null {
     const data = ctx.callbackQuery && 'data' in ctx.callbackQuery
@@ -20,19 +21,13 @@ export async function handleAccept(ctx: Context): Promise<void> {
         return;
     }
 
-    const data = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
-    if (!data) {
+    const postData = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
+    if (!postData) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
     }
-    const { original, review } = data;
 
-    await Promise.all([
-        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.messageId),
-        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.buttonsMsgId)
-    ]);
-
-
+    const { original } = postData;
     await ctx.telegram.setMessageReaction(
         original.chatId,
         original.messageId,
@@ -40,13 +35,16 @@ export async function handleAccept(ctx: Context): Promise<void> {
         true
     );
 
+    const updatedCaption  = `${original.caption}\n\n` +
+    `👤 Автор: ${original.username}` +
+    ` | <a href="https://t.me/${ctx.me}">Предложка</a>`
     await ctx.telegram.sendAnimation(CONFIG.TG_TARGET_CHANNEL_ID, original.contentFileId, {
-        caption: original.caption,
+        caption: updatedCaption,
         parse_mode: 'HTML'
     });
 
     await ctx.answerCbQuery('👍 Принято и отправлено в канал');
-    await Redis.getInstance().delete(GET_POST_KEY(reviewMsgID));
+    await cleanUp(ctx, postData, REACTION.ACCEPT[0])
 }
 
 export async function handleReject(ctx: Context) {
@@ -56,18 +54,13 @@ export async function handleReject(ctx: Context) {
         return;
     }
 
-    const data = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
-    if (!data) {
+    const postData = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
+    if (!postData) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
     }
-    const { original, review } = data;
 
-    await Promise.all([
-        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.messageId),
-        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.buttonsMsgId)
-    ]);
-
+    const { original } = postData;
     await ctx.telegram.setMessageReaction(
         original.chatId,
         original.messageId,
@@ -76,5 +69,25 @@ export async function handleReject(ctx: Context) {
     );
 
     await ctx.answerCbQuery('👎 Отклонено');
-    await Redis.getInstance().delete(GET_POST_KEY(reviewMsgID));
+    await cleanUp(ctx, postData, REACTION.REJECT[0])
+}
+
+async function cleanUp(ctx: Context, post: PendingMessage, reaction: ReactionTypeEmoji): Promise<void> {
+    const { original, review } = post;
+
+    await Promise.all([
+        ctx.telegram.editMessageCaption(
+            CONFIG.TG_SUGGESTION_CHAT_ID,
+            review.messageId,
+            undefined,
+            `${original.caption}\n\n` +
+            `<blockquote>Решение: "${reaction.emoji}" (${ctx.from?.username})</blockquote>`,
+            {
+                parse_mode: 'HTML'
+            }
+        ),
+        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.buttonsMsgId)
+    ]);
+
+    await Redis.getInstance().delete(GET_POST_KEY(review.messageId));
 }

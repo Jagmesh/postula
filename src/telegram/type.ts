@@ -4,6 +4,7 @@ export interface PendingMessage {
         messageId:  number;
         caption: string;
         contentFileId: string;
+        username: string;
     }
     review: {
         messageId:  number;
