@@ -1,4 +1,4 @@
-import { Context } from 'telegraf';
+import {Context, Markup} from 'telegraf';
 import {CONFIG} from '../../../config.js';
 import {  GET_POST_KEY, REACTION } from '../../const.js';
 import { Redis } from '../../../redis/redis.service.js';
@@ -27,24 +27,18 @@ export async function handleAccept(ctx: Context): Promise<void> {
         return;
     }
 
-    const { original } = postData;
-    await ctx.telegram.setMessageReaction(
-        original.chatId,
-        original.messageId,
-        REACTION.ACCEPT,
-        true
-    );
-
-    const updatedCaption  = `${original.caption}\n\n` +
-    `👤 Автор: ${original.username}` +
-    ` | <a href="https://t.me/${ctx.me}">Предложка</a>`
-    await ctx.telegram.sendAnimation(CONFIG.TG_TARGET_CHANNEL_ID, original.contentFileId, {
-        caption: updatedCaption,
-        parse_mode: 'HTML'
-    });
-
-    await ctx.answerCbQuery('👍 Принято и отправлено в канал');
-    await cleanUp(ctx, postData, REACTION.ACCEPT[0])
+    await ctx.telegram.editMessageReplyMarkup(
+        CONFIG.TG_SUGGESTION_CHAT_ID,
+        postData.review.buttonsMsgId,
+        undefined,
+        Markup.inlineKeyboard(
+            [
+                Markup.button.callback('🚀 Опубликовать сейчас', `post_now:${postData.review.messageId}`),
+                Markup.button.callback('🕒 Опубликовать потом', `post_in_time:${postData.review.messageId}`)
+            ], {
+                columns: 1
+            }
+        ).reply_markup)
 }
 
 export async function handleReject(ctx: Context) {
@@ -90,4 +84,42 @@ async function cleanUp(ctx: Context, post: PendingMessage, reaction: ReactionTyp
     ]);
 
     await Redis.getInstance().delete(GET_POST_KEY(review.messageId));
+}
+
+export async function handlePostNow(ctx: Context) {
+    const reviewMsgID = parseCallbackData(ctx);
+    if (!reviewMsgID) {
+        await ctx.answerCbQuery('Некорректные данные');
+        return;
+    }
+
+    const postData = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
+    if (!postData) {
+        await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
+        return;
+    }
+
+    const { original } = postData;
+    await ctx.telegram.setMessageReaction(
+        original.chatId,
+        original.messageId,
+        REACTION.ACCEPT,
+        true
+    );
+
+    const updatedCaption  = `${original.caption}\n\n` +
+        `👤 Автор: ${original.username}` +
+        ` | <a href="https://t.me/${ctx.me}">Предложка</a>`
+    await ctx.telegram.sendAnimation(CONFIG.TG_TARGET_CHANNEL_ID, original.contentFileId, {
+        caption: updatedCaption,
+        parse_mode: 'HTML'
+    });
+
+    await ctx.answerCbQuery('👍 Принято и отправлено в канал');
+    await cleanUp(ctx, postData, REACTION.ACCEPT[0])
+}
+
+export async function handlePostInTime(ctx: Context) {
+    //TODO: add postpone post handling
+    await ctx.answerCbQuery('(┛ಠ_ಠ)┛彡┻━┻ NIZYANIZYANIZYANIZYA (¬､¬)')
 }
