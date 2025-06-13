@@ -1,12 +1,12 @@
 import {Telegraf, Context} from "telegraf";
 import Logger from "jblog";
-import {handleEditedMessage, handleMessage} from "./handler/on/message-handler.js";
-import {handleAccept, handleReject} from "./handler/action/action-handler.js";
-import {validateAnimationMsg} from "./validation/validate.js";
+import {handleEditedMessage, handleMessage} from "./handler/on/message.on";
+import {handleAccept, handleReject} from "./handler/action/accept-n-reject.action";
+import {validateAnimationMsg} from "./middleware/validate.filter";
 import {commandStart} from "./handler/command/start.command.js";
 import { CONFIG } from "../config.js";
 import {commandFlush} from "./handler/command/flush.command.js";
-import {adminGuard} from "./validation/admin.guard.js";
+import {adminGuard} from "./middleware/admin.guard.js";
 
 export class Telegram {
     private readonly log: Logger = new Logger({scopes: [Telegram.name.toUpperCase()]});
@@ -18,8 +18,8 @@ export class Telegram {
 
     async init() {
         this.bot.catch((err: unknown, ctx: Context) => {
-            this.log.error(`Error occured: ${err}`)
-            this.bot.telegram.sendMessage(CONFIG.TG_SUGGESTION_CHAT_ID, `Error occured: ${err}`)
+            this.log.error(`Error occurred: ${err}`)
+            this.bot.telegram.sendMessage(CONFIG.TG_SUGGESTION_CHAT_ID, `❌ Error occurred: ${err}`)
         })
 
         this.bot.command('start', commandStart)
