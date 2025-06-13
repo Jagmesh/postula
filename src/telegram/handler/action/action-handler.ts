@@ -81,7 +81,7 @@ async function cleanUp(ctx: Context, post: PendingMessage, reaction: ReactionTyp
             review.messageId,
             undefined,
             `${original.caption}\n\n` +
-            `<blockquote>Решение: "${reaction.emoji}" (${ctx.from?.username})</blockquote>`,
+            `<blockquote>Пост от ${original.username}. Решение: "${reaction.emoji}" (by ${ctx.from?.username})</blockquote>`,
             {
                 parse_mode: 'HTML'
             }
