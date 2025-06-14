@@ -1,7 +1,13 @@
 import {Telegraf, Context} from "telegraf";
 import Logger from "jblog";
 import {handleEditedMessage, handleMessage} from "./handler/on/message.on.js";
-import {handleAccept, handlePostInTime, handlePostNow, handleReject} from "./handler/action/accept-n-reject.action.js";
+import {
+    handleAccept,
+    handleMainMenu,
+    handlePostInTime,
+    handlePostNow,
+    handleReject
+} from "./handler/action/accept-n-reject.action.js";
 import {validateAnimationMsg} from "./middleware/validate.filter.js";
 import {commandStart} from "./handler/command/start.command.js";
 import { CONFIG } from "../config.js";
@@ -33,6 +39,8 @@ export class Telegram {
 
         this.bot.action(/post_now:(\d+)/, handlePostNow);
         this.bot.action(/post_in_time:(\d+)/, handlePostInTime);
+
+        this.bot.action(/main_menu:(\d+)/, handleMainMenu);
 
         await this.bot.launch(() => { this.log.success('Bot started successfully')})
     }

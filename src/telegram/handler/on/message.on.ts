@@ -1,9 +1,10 @@
-import {Context, Markup} from 'telegraf';
+import {Context} from 'telegraf';
 import {GET_POST_KEY, REACTION} from '../../const.js';
 import type {PendingMessage} from '../../type';
 import {Message} from 'telegraf/types';
 import {CONFIG} from "../../../config.js";
 import {Redis} from "../../../redis/redis.service.js";
+import {BUTTONS_MARKUP} from "../../common/button/button.const.js";
 
 async function processIncomingMessage(ctx: Context, message: Message.AnimationMessage) {
     const from = message.from!;
@@ -25,10 +26,7 @@ async function processIncomingMessage(ctx: Context, message: Message.AnimationMe
             reply_parameters: {
                 message_id: reviewMsg.message_id
             },
-            ...Markup.inlineKeyboard([
-                Markup.button.callback('👍 Принять', `accept:${reviewMsg.message_id}`),
-                Markup.button.callback('👎 Отклонить', `reject:${reviewMsg.message_id}`)
-            ])
+            ...BUTTONS_MARKUP.ACCEPT_OR_REJECT(reviewMsg.message_id)
         }
     );
 

@@ -1,4 +1,4 @@
-import {Context} from "telegraf";
+import {Context, TelegramError} from "telegraf";
 import {CONFIG} from "../../../config.js";
 import Logger from "jblog";
 
@@ -15,7 +15,11 @@ export async function commandFlush(ctx: Context): Promise<void> {
     for (let i = from; i <= to; i++) {
         try {
             await ctx.telegram.deleteMessage(suggestionChatId, i);
-        } catch {}
+        } catch(err: TelegramError | unknown) {
+            if(err instanceof TelegramError && err.response && err.response.error_code !== 400) {
+                log.error(err.response);
+            }
+        }
     }
     log.success(`Deleted ${to-from} posts in ${suggestionChatId} (from ${from} to ${to})`)
 }

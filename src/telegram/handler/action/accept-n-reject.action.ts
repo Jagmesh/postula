@@ -4,6 +4,7 @@ import {  GET_POST_KEY, REACTION } from '../../const.js';
 import { Redis } from '../../../redis/redis.service.js';
 import { PendingMessage } from '../../type';
 import {ReactionTypeEmoji} from "telegraf/types";
+import {BUTTONS_MARKUP} from "../../common/button/button.const.js";
 
 function parseCallbackData(ctx: Context): string | null {
     const data = ctx.callbackQuery && 'data' in ctx.callbackQuery
@@ -34,7 +35,8 @@ export async function handleAccept(ctx: Context): Promise<void> {
         Markup.inlineKeyboard(
             [
                 Markup.button.callback('🚀 Опубликовать сейчас', `post_now:${postData.review.messageId}`),
-                Markup.button.callback('🕒 Опубликовать потом', `post_in_time:${postData.review.messageId}`)
+                Markup.button.callback('🕒 Опубликовать потом', `post_in_time:${postData.review.messageId}`),
+                Markup.button.callback('🔙 Назад', `main_menu:${postData.review.messageId}`)
             ], {
                 columns: 1
             }
@@ -122,4 +124,25 @@ export async function handlePostNow(ctx: Context) {
 export async function handlePostInTime(ctx: Context) {
     //TODO: add postpone post handling
     await ctx.answerCbQuery('(┛ಠ_ಠ)┛彡┻━┻ NIZYANIZYANIZYANIZYA (¬､¬)')
+}
+
+export async function handleMainMenu(ctx: Context) {
+    const reviewMsgID = parseCallbackData(ctx);
+    if (!reviewMsgID) {
+        await ctx.answerCbQuery('Некорректные данные');
+        return;
+    }
+
+    const postData = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
+    if (!postData) {
+        await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
+        return;
+    }
+
+    await ctx.telegram.editMessageReplyMarkup(
+        CONFIG.TG_SUGGESTION_CHAT_ID,
+        postData.review.buttonsMsgId,
+        undefined,
+        BUTTONS_MARKUP.ACCEPT_OR_REJECT(postData.review.messageId).reply_markup
+    )
 }
