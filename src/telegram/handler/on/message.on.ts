@@ -16,10 +16,7 @@ async function processIncomingMessage(ctx: Context, message: Message.AnimationMe
     await ctx.telegram.setMessageReaction(chat.id, message.message_id, REACTION.WAIT, true);
 
     const origCaption = typeof message.caption === 'string' && message.caption.trim().length > 0 ? message.caption.trim() : ''
-    const reviewMsg = await ctx.telegram.sendAnimation(CONFIG.TG_SUGGESTION_CHAT_ID, message.animation.file_id, {
-        caption: origCaption,
-        parse_mode: 'HTML',
-    });
+    const reviewMsg = await ctx.telegram.copyMessage(CONFIG.TG_SUGGESTION_CHAT_ID, chat.id, message.message_id)
 
     const headerText = `📥 Пост от @${from.username || from.first_name} (id: ${from.id} / id сообщения: ${message.message_id}):`
     const actionsMsg = await ctx.telegram.sendMessage(
@@ -38,7 +35,6 @@ async function processIncomingMessage(ctx: Context, message: Message.AnimationMe
             chatId: chat.id,
             messageId: message.message_id,
             caption: origCaption,
-            contentFileId: message.animation.file_id,
             username: message.from?.username ? `@${message.from.username}` : `ID: ${message.from?.id}`
         },
         review: {
@@ -78,7 +74,6 @@ async function processEditedMessage(ctx: Context, message: Message.AnimationMess
             chatId: chat.id,
             messageId: message.message_id,
             caption: editedCaption,
-            contentFileId: message.animation.file_id,
             username
         },
         review: {

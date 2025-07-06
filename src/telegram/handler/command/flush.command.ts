@@ -9,7 +9,7 @@ export async function commandFlush(ctx: Context): Promise<void> {
     if(suggestionChatId != ctx.chat?.id) return;
 
     const currentMsgId = ctx.msgId
-    const from = 75, to = currentMsgId || 0
+    const from = 525, to = currentMsgId || 0
     log.info(`Deleting ${to-from} posts in ${suggestionChatId} (from ${from} to ${to})`)
 
     for (let i = from; i <= to; i++) {

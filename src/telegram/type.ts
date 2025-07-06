@@ -3,7 +3,6 @@ export interface PendingMessage {
         chatId:  number | string;
         messageId:  number;
         caption: string;
-        contentFileId: string;
         username: string;
     }
     review: {

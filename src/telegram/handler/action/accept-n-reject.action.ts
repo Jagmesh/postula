@@ -112,10 +112,10 @@ export async function handlePostNow(ctx: Context) {
     const updatedCaption  = `${original.caption}\n\n` +
         `👤 Автор: ${original.username}` +
         ` | <a href="https://t.me/${ctx.me}">Предложка</a>`
-    await ctx.telegram.sendAnimation(CONFIG.TG_TARGET_CHANNEL_ID, original.contentFileId, {
-        caption: updatedCaption,
-        parse_mode: 'HTML'
-    });
+    await ctx.telegram.copyMessage(CONFIG.TG_TARGET_CHANNEL_ID, CONFIG.TG_SUGGESTION_CHAT_ID, Number(reviewMsgID), {
+            caption: updatedCaption,
+            parse_mode: 'HTML',
+        })
 
     await ctx.answerCbQuery('👍 Принято и отправлено в канал');
     await cleanUp(ctx, postData, REACTION.ACCEPT[0])

@@ -14,12 +14,12 @@ export async function validateAnimationMsg(ctx: Context, next: () => Promise<voi
     if(message?.from?.username === ctx.me) return log.error('The bot itself has sent this message');
     const from = message.from?.username ? `@${message.from.username}` : `ID: ${message.from?.id}`
 
+    if (!('animation' in message)) {
+        await ctx.telegram.setMessageReaction(id, message.message_id, REACTION.REJECT, true);
+        return log.error(`No animation in message [${from}]`);
+    }
+
     /** No post validation for now */
-    
-    // if (!('animation' in message)) {
-    //     await ctx.telegram.setMessageReaction(id, message.message_id, REACTION.REJECT, true);
-    //     return log.error(`No animation in message [${from}]`);
-    // }
     // if (!('caption' in message) || typeof message.caption !== 'string' || message.caption.trim().length === 0) {
     //     await ctx.telegram.setMessageReaction(id, message.message_id, REACTION.REJECT, true);
     //     return log.error(`No caption in message [${from}]`);
