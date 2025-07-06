@@ -1,10 +1,13 @@
 import {Context} from 'telegraf';
-import {GET_POST_KEY, REACTION} from '../../const.js';
+import {REACTION} from '../../const.js';
 import type {PendingMessage} from '../../type';
 import {Message} from 'telegraf/types';
 import {CONFIG} from "../../../config.js";
-import {Redis} from "../../../redis/redis.service.js";
 import {BUTTONS_MARKUP} from "../../common/button/button.const.js";
+import {TgStorage} from "../../storage/storage.service.js";
+import Logger from "jblog";
+
+const log = new Logger({scopes: ['HANDLE_MESSAGE']});
 
 async function processIncomingMessage(ctx: Context, message: Message.AnimationMessage) {
     const from = message.from!;
@@ -44,7 +47,47 @@ async function processIncomingMessage(ctx: Context, message: Message.AnimationMe
         }
     };
     
-    await Redis.getInstance().set(GET_POST_KEY(reviewMsg.message_id), pending)
+    await TgStorage.add(reviewMsg.message_id, pending)
+}
+
+async function processEditedMessage(ctx: Context, message: Message.AnimationMessage) {
+    const from = message.from!;
+    const chat = ctx.chat!;
+    const username = from?.username ? `@${from.username}` : `ID: ${from?.id}`
+
+    const postData = await TgStorage.findByOriginalID(chat.id, message.message_id);
+    if (!postData) {
+        log.warn(`No post data found while handling "edited_message" for User: ${username}, ChatID: ${chat.id}, MessageID: ${message.message_id}`);
+        return;
+    }
+
+    await ctx.telegram.setMessageReaction(chat.id, message.message_id, REACTION.PROCESSING, true);
+    await new Promise((resolve) => setTimeout(resolve, 2_000)); // Some delay to show the reaction
+    await ctx.telegram.setMessageReaction(chat.id, message.message_id, REACTION.WAIT, true);
+
+    const editedCaption = typeof message.caption === 'string' && message.caption.trim().length > 0 ? message.caption.trim() : ''
+    await ctx.telegram.editMessageCaption(
+        CONFIG.TG_SUGGESTION_CHAT_ID,
+        postData.review.messageId,
+        undefined,
+        editedCaption,
+    );
+
+    const pending: PendingMessage = {
+        original: {
+            chatId: chat.id,
+            messageId: message.message_id,
+            caption: editedCaption,
+            contentFileId: message.animation.file_id,
+            username
+        },
+        review: {
+            messageId: postData.review.messageId,
+            buttonsMsgId: postData.review.buttonsMsgId
+        }
+    };
+
+    await TgStorage.add(postData.review.messageId, pending)
 }
 
 export async function handleMessage(ctx: Context) {
@@ -54,5 +97,5 @@ export async function handleMessage(ctx: Context) {
 
 export async function handleEditedMessage(ctx: Context) {
     const message = ctx.editedMessage;
-    await processIncomingMessage(ctx, message as any);
+    await processEditedMessage(ctx, message as any);
 }

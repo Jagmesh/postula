@@ -1,10 +1,10 @@
 import {Context, Markup} from 'telegraf';
 import {CONFIG} from '../../../config.js';
-import {  GET_POST_KEY, REACTION } from '../../const.js';
-import { Redis } from '../../../redis/redis.service.js';
+import {  REACTION } from '../../const.js';
 import { PendingMessage } from '../../type';
 import {ReactionTypeEmoji} from "telegraf/types";
 import {BUTTONS_MARKUP} from "../../common/button/button.const.js";
+import {TgStorage} from "../../storage/storage.service.js";
 
 function parseCallbackData(ctx: Context): string | null {
     const data = ctx.callbackQuery && 'data' in ctx.callbackQuery
@@ -22,7 +22,7 @@ export async function handleAccept(ctx: Context): Promise<void> {
         return;
     }
 
-    const postData = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
+    const postData = await TgStorage.findByPostID(reviewMsgID);
     if (!postData) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
@@ -50,7 +50,7 @@ export async function handleReject(ctx: Context) {
         return;
     }
 
-    const postData = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
+    const postData = await TgStorage.findByPostID(reviewMsgID);
     if (!postData) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
@@ -85,7 +85,7 @@ async function cleanUp(ctx: Context, post: PendingMessage, reaction: ReactionTyp
         ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.buttonsMsgId)
     ]);
 
-    await Redis.getInstance().delete(GET_POST_KEY(review.messageId));
+    await TgStorage.delete(review.messageId);
 }
 
 export async function handlePostNow(ctx: Context) {
@@ -95,7 +95,7 @@ export async function handlePostNow(ctx: Context) {
         return;
     }
 
-    const postData = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
+    const postData = await TgStorage.findByPostID(reviewMsgID);
     if (!postData) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
@@ -133,7 +133,7 @@ export async function handleMainMenu(ctx: Context) {
         return;
     }
 
-    const postData = await Redis.getInstance().get<PendingMessage>(GET_POST_KEY(reviewMsgID));
+    const postData = await TgStorage.findByPostID(reviewMsgID);
     if (!postData) {
         await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
         return;
