@@ -157,7 +157,7 @@ async function setReaction(ctx: Context, reaction: ReactionTypeEmoji[], chatId: 
         true
     ).catch(err => {
         if(err instanceof TelegramError && err.description.trim() === postAlreadyDeletedTgErrorDescription) {
-            log.warn(`Post in ${chatId} chat with ${messageId} messageID was already deleted`)
+            return log.warn(`Post in ${chatId} chat with ${messageId} messageID was already deleted`)
         }
         throw err;
     });
