@@ -1,4 +1,4 @@
-import {Context, Markup} from 'telegraf';
+import {Context, Markup, TelegramError} from 'telegraf';
 import {CONFIG} from '../../../config.js';
 import {  REACTION } from '../../const.js';
 import { PendingMessage } from '../../type';
@@ -57,11 +57,10 @@ export async function handleReject(ctx: Context) {
     }
 
     const { original } = postData;
-    await ctx.telegram.setMessageReaction(
+    await setReaction(ctx,
+        REACTION.REJECT,
         original.chatId,
         original.messageId,
-        REACTION.REJECT,
-        true
     );
 
     await ctx.answerCbQuery('👎 Отклонено');
@@ -102,11 +101,10 @@ export async function handlePostNow(ctx: Context) {
     }
 
     const { original } = postData;
-    await ctx.telegram.setMessageReaction(
+    await setReaction(ctx,
+        REACTION.ACCEPT,
         original.chatId,
         original.messageId,
-        REACTION.ACCEPT,
-        true
     );
 
     const updatedCaption  = `${original.caption}\n\n` +
@@ -145,4 +143,17 @@ export async function handleMainMenu(ctx: Context) {
         undefined,
         BUTTONS_MARKUP.ACCEPT_OR_REJECT(postData.review.messageId).reply_markup
     )
+}
+
+async function setReaction(ctx: Context, reaction: ReactionTypeEmoji[], chatId: string | number, messageId: number): Promise<void> {
+    await ctx.telegram.setMessageReaction(
+        chatId,
+        messageId,
+        reaction,
+        true
+    ).catch(err => {
+        if(err instanceof TelegramError) {
+            console.log("err.description: ", err.description);
+        }
+    });
 }

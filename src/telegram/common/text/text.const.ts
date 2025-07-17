@@ -3,7 +3,7 @@ import {REACTION} from "../../const.js"
 
 export const TG_TEXT = {
     ENTRY_MESSAGE: prepareEntryMessage(),
-    INSTUCTIONS_MESSAGE: prepareInstructions(),
+    INSTRUCTIONS_MESSAGE: prepareInstructions(),
     FEEDBACK_MESSAGE: prepareFeedbackMessage(),
 }
 
