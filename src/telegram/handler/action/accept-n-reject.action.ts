@@ -5,6 +5,9 @@ import { PendingMessage } from '../../type';
 import {ReactionTypeEmoji} from "telegraf/types";
 import {BUTTONS_MARKUP} from "../../common/button/button.const.js";
 import {TgStorage} from "../../storage/storage.service.js";
+import Logger from "jblog";
+
+const log = new Logger({scopes: ['ACCEPT-N-REJECT.ACTION']});
 
 function parseCallbackData(ctx: Context): string | null {
     const data = ctx.callbackQuery && 'data' in ctx.callbackQuery
@@ -146,14 +149,16 @@ export async function handleMainMenu(ctx: Context) {
 }
 
 async function setReaction(ctx: Context, reaction: ReactionTypeEmoji[], chatId: string | number, messageId: number): Promise<void> {
+    const postAlreadyDeletedTgErrorDescription = "Bad Request: message to react not found"
     await ctx.telegram.setMessageReaction(
         chatId,
         messageId,
         reaction,
         true
     ).catch(err => {
-        if(err instanceof TelegramError) {
-            console.log("err.description: ", err.description);
+        if(err instanceof TelegramError && err.description.trim() === postAlreadyDeletedTgErrorDescription) {
+            log.warn(`Post in ${chatId} chat with ${messageId} messageID was already deleted`)
         }
+        throw err;
     });
 }

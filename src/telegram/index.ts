@@ -13,6 +13,7 @@ import {commandStart} from "./handler/command/start.command.js";
 import { CONFIG } from "../config.js";
 import {commandFlush} from "./handler/command/flush.command.js";
 import {adminGuard} from "./middleware/admin.guard.js";
+import {commandHelp} from "./handler/command/help.command";
 
 export class Telegram {
     private readonly log: Logger = new Logger({scopes: [Telegram.name.toUpperCase()]});
@@ -29,6 +30,7 @@ export class Telegram {
         })
 
         this.bot.command('start', commandStart)
+        this.bot.command('help', commandHelp)
         this.bot.command('flush', adminGuard, commandFlush)
 
         this.bot.on('message', validateAnimationMsg, handleMessage);
