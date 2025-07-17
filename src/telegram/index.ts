@@ -13,7 +13,7 @@ import {commandStart} from "./handler/command/start.command.js";
 import { CONFIG } from "../config.js";
 import {commandFlush} from "./handler/command/flush.command.js";
 import {adminGuard} from "./middleware/admin.guard.js";
-import {commandHelp} from "./handler/command/help.command";
+import {commandHelp} from "./handler/command/help.command.js";
 
 export class Telegram {
     private readonly log: Logger = new Logger({scopes: [Telegram.name.toUpperCase()]});
