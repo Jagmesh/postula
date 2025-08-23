@@ -43,13 +43,6 @@ export class Redis {
     return Redis._instance;
   }
 
-  // public static getClient() {
-  //     const inst = Redis.getInstance()
-  //     if (!inst) throw new Error('Redis hasn\'t been initialized. Use `init()`');
-  //
-  //     return inst.client;
-  // }
-
   private async connect(): Promise<void> {
     this.client = createClient(this.initConfig);
     this.client.on("error", (err) => {

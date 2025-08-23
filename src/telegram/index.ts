@@ -37,10 +37,7 @@ export class Telegram {
   async init() {
     this.bot.catch((err: unknown, ctx: Context) => {
       this.log.error(`Error occurred: ${err}`);
-      this.bot.telegram.sendMessage(
-        CONFIG.TG_SUGGESTION_CHAT_ID,
-        `❌ Error occurred: ${err}`,
-      );
+      this.bot.telegram.sendMessage(CONFIG.TG_SUGGESTION_CHAT_ID, `❌ Error occurred: ${err}`);
     });
 
     CronJob.from({
@@ -49,6 +46,7 @@ export class Telegram {
         this.scheduler.process();
       },
       start: true,
+      timeZone: 'Europe/Moscow'
     }).start();
 
     this.bot.command("start", commandStart);

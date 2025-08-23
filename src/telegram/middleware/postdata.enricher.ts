@@ -1,6 +1,7 @@
 import { Context } from "telegraf";
 import Logger from "jblog";
 import { TgStorage } from "../storage/storage.service.js";
+import {PostDataContext} from "../type";
 
 const log = new Logger({ scopes: ["POST_DATA_ENRICHER"] });
 
@@ -25,10 +26,7 @@ export async function postDataEnricher(
     postData.admin = { username: adminName };
     await TgStorage.add(reviewMsgID, postData);
   }
-  // @ts-ignore
-  ctx.postData = postData;
-  // @ts-ignore
-  log.info("postData", ctx.postData);
+  (ctx as PostDataContext).postData = postData;
 
   await next();
 }
