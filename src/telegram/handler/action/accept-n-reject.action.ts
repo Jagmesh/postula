@@ -1,164 +1,75 @@
-import {Context, Markup, TelegramError} from 'telegraf';
-import {CONFIG} from '../../../config.js';
-import {  REACTION } from '../../const.js';
-import { PendingMessage } from '../../type';
-import {ReactionTypeEmoji} from "telegraf/types";
-import {BUTTONS_MARKUP} from "../../common/button/button.const.js";
-import {TgStorage} from "../../storage/storage.service.js";
-import Logger from "jblog";
+import { Markup } from "telegraf";
+import { CONFIG } from "../../../config.js";
+import { BUTTONS_MARKUP } from "../../common/button/button.const.js";
+import { Post } from "../../post/post.js";
+import { Scheduler } from "../../../scheduler/scheduler.js";
+import { PostDataContext } from "../../type";
 
-const log = new Logger({scopes: ['ACCEPT-N-REJECT.ACTION']});
+export async function handleAccept(ctx: PostDataContext): Promise<void> {
+  const { postData } = ctx;
+  if (!postData) throw new Error("No post data");
 
-function parseCallbackData(ctx: Context): string | null {
-    const data = ctx.callbackQuery && 'data' in ctx.callbackQuery
-        ? (ctx.callbackQuery.data as string)
-        : null;
-    if (!data) return null;
-    const parts = data.split(':');
-    return parts.length === 2 ? parts[1] : null;
-}
-
-export async function handleAccept(ctx: Context): Promise<void> {
-    const reviewMsgID = parseCallbackData(ctx);
-    if (!reviewMsgID) {
-        await ctx.answerCbQuery('Некорректные данные');
-        return;
-    }
-
-    const postData = await TgStorage.findByPostID(reviewMsgID);
-    if (!postData) {
-        await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
-        return;
-    }
-
-    await ctx.telegram.editMessageReplyMarkup(
-        CONFIG.TG_SUGGESTION_CHAT_ID,
-        postData.review.buttonsMsgId,
-        undefined,
-        Markup.inlineKeyboard(
-            [
-                Markup.button.callback('🚀 Опубликовать сейчас', `post_now:${postData.review.messageId}`),
-                Markup.button.callback('🕒 Опубликовать потом', `post_in_time:${postData.review.messageId}`),
-                Markup.button.callback('🔙 Назад', `main_menu:${postData.review.messageId}`)
-            ], {
-                columns: 1
-            }
-        ).reply_markup)
-}
-
-export async function handleReject(ctx: Context) {
-    const reviewMsgID = parseCallbackData(ctx);
-    if (!reviewMsgID) {
-        await ctx.answerCbQuery('Некорректные данные');
-        return;
-    }
-
-    const postData = await TgStorage.findByPostID(reviewMsgID);
-    if (!postData) {
-        await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
-        return;
-    }
-
-    const { original } = postData;
-    await setReaction(ctx,
-        REACTION.REJECT,
-        original.chatId,
-        original.messageId,
-    );
-
-    await ctx.answerCbQuery('👎 Отклонено');
-    await cleanUp(ctx, postData, REACTION.REJECT[0])
-}
-
-async function cleanUp(ctx: Context, post: PendingMessage, reaction: ReactionTypeEmoji): Promise<void> {
-    const { original, review } = post;
-
-    await Promise.all([
-        ctx.telegram.editMessageCaption(
-            CONFIG.TG_SUGGESTION_CHAT_ID,
-            review.messageId,
-            undefined,
-            `${original.caption}\n\n` +
-            `<blockquote>Пост от ${original.username}. Решение: "${reaction.emoji}" (by @${ctx.from?.username})</blockquote>`,
-            {
-                parse_mode: 'HTML'
-            }
+  await ctx.telegram.editMessageReplyMarkup(
+    CONFIG.TG_SUGGESTION_CHAT_ID,
+    postData.review.buttonsMsgId,
+    undefined,
+    Markup.inlineKeyboard(
+      [
+        Markup.button.callback(
+          "🚀 Опубликовать сейчас",
+          `post_now:${postData.review.messageId}`,
         ),
-        ctx.telegram.deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, review.buttonsMsgId)
-    ]);
-
-    await TgStorage.delete(review.messageId);
+        Markup.button.callback(
+          "🕒 Опубликовать потом",
+          `post_in_time:${postData.review.messageId}`,
+        ),
+        Markup.button.callback(
+          "🔙 Назад",
+          `main_menu:${postData.review.messageId}`,
+        ),
+      ],
+      {
+        columns: 1,
+      },
+    ).reply_markup,
+  );
 }
 
-export async function handlePostNow(ctx: Context) {
-    const reviewMsgID = parseCallbackData(ctx);
-    if (!reviewMsgID) {
-        await ctx.answerCbQuery('Некорректные данные');
-        return;
-    }
+export async function handleReject(ctx: PostDataContext, postService: Post) {
+  const { postData } = ctx;
+  if (!postData) throw new Error("No post data");
 
-    const postData = await TgStorage.findByPostID(reviewMsgID);
-    if (!postData) {
-        await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
-        return;
-    }
-
-    const { original } = postData;
-    await setReaction(ctx,
-        REACTION.ACCEPT,
-        original.chatId,
-        original.messageId,
-    );
-
-    const updatedCaption  = `${original.caption}\n\n` +
-        `👤 Автор: ${original.username}` +
-        ` | <a href="https://t.me/${ctx.me}">Предложка</a>`
-    await ctx.telegram.copyMessage(CONFIG.TG_TARGET_CHANNEL_ID, CONFIG.TG_SUGGESTION_CHAT_ID, Number(reviewMsgID), {
-            caption: updatedCaption,
-            parse_mode: 'HTML',
-        })
-
-    await ctx.answerCbQuery('👍 Принято и отправлено в канал');
-    await cleanUp(ctx, postData, REACTION.ACCEPT[0])
+  await postService.reject(ctx?.from?.username || "", postData);
+  await ctx.answerCbQuery("👎 Отклонено");
 }
 
-export async function handlePostInTime(ctx: Context) {
-    //TODO: add postpone post handling
-    await ctx.answerCbQuery('(┛ಠ_ಠ)┛彡┻━┻ NIZYANIZYANIZYANIZYA (¬､¬)')
+export async function handlePostNow(ctx: PostDataContext, postService: Post) {
+  const { postData } = ctx;
+  if (!postData) throw new Error("No post data");
+
+  await postService.accept(ctx?.from?.username || "", postData);
+  await ctx.answerCbQuery("👍 Принято и отправлено в канал");
 }
 
-export async function handleMainMenu(ctx: Context) {
-    const reviewMsgID = parseCallbackData(ctx);
-    if (!reviewMsgID) {
-        await ctx.answerCbQuery('Некорректные данные');
-        return;
-    }
+export async function handlePostInTime(
+  ctx: PostDataContext,
+  scheduler: Scheduler,
+) {
+  const { postData } = ctx;
+  if (!postData) throw new Error("No post data");
 
-    const postData = await TgStorage.findByPostID(reviewMsgID);
-    if (!postData) {
-        await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
-        return;
-    }
-
-    await ctx.telegram.editMessageReplyMarkup(
-        CONFIG.TG_SUGGESTION_CHAT_ID,
-        postData.review.buttonsMsgId,
-        undefined,
-        BUTTONS_MARKUP.ACCEPT_OR_REJECT(postData.review.messageId).reply_markup
-    )
+  await scheduler.queue(postData);
+  await ctx.answerCbQuery("⏳ Пост отправлен в отложку");
 }
 
-async function setReaction(ctx: Context, reaction: ReactionTypeEmoji[], chatId: string | number, messageId: number): Promise<void> {
-    const postAlreadyDeletedTgErrorDescription = "Bad Request: message to react not found"
-    await ctx.telegram.setMessageReaction(
-        chatId,
-        messageId,
-        reaction,
-        true
-    ).catch(err => {
-        if(err instanceof TelegramError && err.description.trim() === postAlreadyDeletedTgErrorDescription) {
-            return log.warn(`Post in ${chatId} chat with ${messageId} messageID was already deleted`)
-        }
-        throw err;
-    });
+export async function handleMainMenu(ctx: PostDataContext) {
+  const { postData } = ctx;
+  if (!postData) throw new Error("No post data");
+
+  await ctx.telegram.editMessageReplyMarkup(
+    CONFIG.TG_SUGGESTION_CHAT_ID,
+    postData.review.buttonsMsgId,
+    undefined,
+    BUTTONS_MARKUP.ACCEPT_OR_REJECT(postData.review.messageId).reply_markup,
+  );
 }
