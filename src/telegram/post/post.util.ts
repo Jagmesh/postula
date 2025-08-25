@@ -13,20 +13,22 @@ export function getCleanUpMessage(post: PostData, result: POST_RESULT): string {
       return (
         `${original.caption}\n\n` +
         `<blockquote>Пост от ${original.username}. ` +
-        `Решение: "${REACTION.ACCEPT[0].emoji}" (by @${from})</blockquote>` +
-        `<blockquote>${post.id}</blockquote>`
+        `Решение: "${REACTION.ACCEPT[0].emoji}" (by @${from})</blockquote>\n` +
+        `<blockquote><i>${post.id}</i></blockquote>`
       );
     case POST_RESULT.REJECTED:
       return (
         `${original.caption}\n\n` +
         `<blockquote>Пост от ${original.username}. ` +
-        `Решение: "${REACTION.REJECT[0].emoji}" (by @${from})</blockquote>`
+        `Решение: "${REACTION.REJECT[0].emoji}" (by @${from})</blockquote>\n` +
+        `<blockquote><i>${post.id}</i></blockquote>`
       );
     case POST_RESULT.POSTPONED:
       return (
         `${original.caption}\n\n` +
         `<blockquote>Пост от ${original.username}. ` +
-        `Пост отложен (by @${from})</blockquote>`
+        `Пост отложен (by @${from})</blockquote>\n` +
+        `<blockquote><i>${post.id}</i></blockquote>`
       );
   }
 }

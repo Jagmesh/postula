@@ -9,9 +9,7 @@ import { POST_RESULT } from './post.const.js';
 import { getCleanUpMessage, handleNotFoundErr } from './post.util.js';
 
 export class Post {
-  private readonly log: Logger = new Logger({
-    scopes: [Post.name.toUpperCase()],
-  });
+  private readonly log: Logger = new Logger({ scopes: [Post.name.toUpperCase()] });
 
   constructor(private readonly bot: Telegraf) {}
 
@@ -69,7 +67,7 @@ export class Post {
         .copyMessage(CONFIG.TG_SUGGESTION_CHAT_ID, CONFIG.TG_SUGGESTION_CHAT_ID, post.review.messageId, {
           caption: getCleanUpMessage(post, result),
           parse_mode: 'HTML',
-          message_thread_id: 1241,
+          message_thread_id: CONFIG.TG_ARCHIVE_THREAD_ID,
         })
         .catch(handleNotFoundErr);
       if (!archiveMsg) return;

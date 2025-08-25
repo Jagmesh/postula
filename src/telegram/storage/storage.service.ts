@@ -39,6 +39,7 @@ export class TgStorage {
 
   static async find(chatID: string | number, messageID: string | number): Promise<PostData | null> {
     const redis = Redis.getInstance();
+    //TODO: add other lookup sets handling
     const postId = await redis.hGet(GET_LOOKUP_POST_KEY('original'), GET_CHAT_POST_COMMON_KEY(chatID, messageID));
     if (!postId) return null;
 
@@ -50,7 +51,7 @@ export class TgStorage {
     if (!post) return;
 
     const redis = Redis.getInstance();
-    await redis.delete(post.id);
+    await redis.delete(GET_POST_KEY(post.id));
 
     await redis.hDelete(
       GET_LOOKUP_POST_KEY('original'),

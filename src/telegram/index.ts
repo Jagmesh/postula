@@ -19,6 +19,7 @@ import { Scheduler } from '../scheduler/scheduler.js';
 import { commandQueue } from './handler/command/queue.command.js';
 import { postDataEnricher } from './middleware/postdata.enricher.js';
 import { CronJob } from 'cron';
+import { newActionRegexp } from './handler/action/action.const';
 
 export class Telegram {
   private readonly log: Logger = new Logger({
@@ -35,30 +36,41 @@ export class Telegram {
   }
 
   async init() {
+    for (const slot of CONFIG.TG_POSTPONED_POSTS_POSTING_SLOTS) {
+      const [hour, minute] = slot.split(':');
+
+      const job = CronJob.from({
+        cronTime: `${minute} ${hour} * * *`, // 10:00, 17:00
+        onTick: () => this.scheduler.process(),
+        start: true,
+        timeZone: CONFIG.TG_POSTPONED_POSTS_TIMEZONE,
+      });
+      this.log.success(`Cronjob on ${job.cronTime} (for ${job.cronTime.timeZone}) registered`)
+      job.start();
+    }
+
+
     this.bot.catch((err: unknown, ctx: Context) => {
-      this.log.error(`Error occurred: ${err}`);
-      this.bot.telegram.sendMessage(CONFIG.TG_SUGGESTION_CHAT_ID, `❌ Error occurred: ${err}`);
+      const errMsg = `update_id:${ctx.update.update_id}. ❌ Error occurred: ${err}`;
+      this.log.error(errMsg);
+      this.bot.telegram.sendMessage(CONFIG.TG_SUGGESTION_CHAT_ID, errMsg);
     });
 
-    CronJob.from({
-      cronTime: '0 10,17 * * *', // 10:00, 17:00
-      onTick: () => this.scheduler.process(),
-      start: true,
-      timeZone: 'Europe/Moscow',
-    }).start();
-
-    // Log each incoming update in a robust, type-safe way
     this.bot.use((ctx: Context, next) => {
       const updateType = ctx.updateType;
       const subtypes = Array.isArray((ctx as any).updateSubTypes) ? (ctx as any).updateSubTypes.join(',') : '';
-      const updateId = (ctx.update as any)?.update_id;
-      const messageId = (ctx as any).message?.message_id ?? (ctx as any).callbackQuery?.id ?? (ctx as any).editedMessage?.message_id;
-      const chatId = (ctx.chat as any)?.id;
+      const updateId = ctx.update.update_id;
+      const action = (ctx.update as any)?.callback_query?.data;
+      const messageId =
+        (ctx as any).message?.message_id ?? (ctx as any).callbackQuery?.id ?? (ctx as any).editedMessage?.message_id;
+      const chatId = ctx.chat?.id;
       const fromId = ctx.from?.id;
       const username = ctx.from?.username ? `@${ctx.from.username}` : '';
 
       this.log.info(
-        `Incoming update: type=${updateType}${subtypes ? ` subtypes=${subtypes}` : ''} update_id=${updateId ?? 'n/a'} msg_id=${messageId ?? 'n/a'} chat=${chatId ?? 'n/a'} from=${fromId ?? 'n/a'} ${username}`
+        `Incoming update: type=${updateType}${subtypes ? ` subtypes=${subtypes}` : ''} update_id=${updateId ?? 'n/a'} ` +
+          `msg_id=${messageId ?? 'n/a'} chat=${chatId ?? 'n/a'} from=${fromId ?? 'n/a'} ${username} ` +
+          `action=${action ?? ''}`
       );
 
       return next();
@@ -72,13 +84,13 @@ export class Telegram {
     this.bot.on('message', validateAnimationMsg, handleMessage);
     this.bot.on('edited_message', validateAnimationMsg, handleEditedMessage);
 
-    this.bot.action(/accept:(\d+)/, postDataEnricher, handleAccept);
-    this.bot.action(/reject:(\d+)/, postDataEnricher, (ctx) => handleReject(ctx, this.postService));
+    this.bot.action(newActionRegexp('accept'), postDataEnricher, handleAccept);
+    this.bot.action(newActionRegexp('reject'), postDataEnricher, (ctx) => handleReject(ctx, this.postService));
 
-    this.bot.action(/post_now:(\d+)/, postDataEnricher, (ctx) => handlePostNow(ctx, this.postService));
-    this.bot.action(/post_in_time:(\d+)/, postDataEnricher, (ctx) => handlePostInTime(ctx, this.scheduler));
+    this.bot.action(newActionRegexp('post_now'), postDataEnricher, (ctx) => handlePostNow(ctx, this.postService));
+    this.bot.action(newActionRegexp('post_in_time'), postDataEnricher, (ctx) => handlePostInTime(ctx, this.scheduler));
 
-    this.bot.action(/main_menu:(\d+)/, postDataEnricher, handleMainMenu);
+    this.bot.action(newActionRegexp('main_menu'), postDataEnricher, handleMainMenu);
 
     await this.bot.launch(() => this.log.success('Bot started successfully'));
   }
