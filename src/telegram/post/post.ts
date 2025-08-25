@@ -9,8 +9,6 @@ import { POST_RESULT } from './post.const.js';
 import { getCleanUpMessage, handleNotFoundErr } from './post.util.js';
 
 export class Post {
-  private readonly log: Logger = new Logger({ scopes: [Post.name.toUpperCase()] });
-
   constructor(private readonly bot: Telegraf) {}
 
   /** Public */
@@ -20,7 +18,7 @@ export class Post {
     const updatedCaption =
       `${post.original.caption}\n\n` +
       `👤 Автор: ${post.original.username}` +
-      ` | <a href="https://t.me/${await this.bot.telegram.getMe()}">Предложка</a>`;
+      ` | <a href="https://t.me/${this.bot.botInfo?.username}">Предложка</a>`;
 
     await this.bot.telegram.copyMessage(
       CONFIG.TG_TARGET_CHANNEL_ID,
