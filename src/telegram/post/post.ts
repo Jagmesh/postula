@@ -21,7 +21,6 @@ export class Post {
       `${post.original.caption}\n\n` +
       `👤 Автор: ${post.original.username}` +
       ` | <a href="https://t.me/${await this.bot.telegram.getMe()}">Предложка</a>`;
-    this.log.info('post:', post);
 
     await this.bot.telegram.copyMessage(
       CONFIG.TG_TARGET_CHANNEL_ID,

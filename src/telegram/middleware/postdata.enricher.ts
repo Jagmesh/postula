@@ -20,6 +20,7 @@ export async function postDataEnricher(ctx: Context, next: () => Promise<void>) 
     await ctx.answerCbQuery('⚠️ Сообщение уже обработано или истекло');
     return;
   }
+  log.info(`Post data:`, postData);
 
   if (adminName) {
     postData.admin = { username: adminName };

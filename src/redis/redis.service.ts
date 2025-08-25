@@ -54,11 +54,6 @@ export class Redis {
     await this.client.connect();
   }
 
-  // public pipe() {
-  //   const multipipe = this.client.multi();
-  //
-  // }
-
   public async set(key: string, value: any): Promise<void> {
     await this.client.set(key, JSON.stringify(value));
   }
