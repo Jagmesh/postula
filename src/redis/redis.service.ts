@@ -7,8 +7,8 @@ import {
   RedisModules,
   RedisScripts,
   TypeMapping,
-} from "redis";
-import Logger from "jblog";
+} from 'redis';
+import Logger from 'jblog';
 
 export class Redis {
   private static _instance: Redis | null = null;
@@ -21,7 +21,7 @@ export class Redis {
     2 | 3,
     TypeMapping
   >;
-  private readonly log: Logger = new Logger({ scopes: ["REDIS"] });
+  private readonly log: Logger = new Logger({ scopes: ['REDIS'] });
 
   constructor(config: RedisClientOptions) {
     this.initConfig = config;
@@ -45,16 +45,19 @@ export class Redis {
 
   private async connect(): Promise<void> {
     this.client = createClient(this.initConfig);
-    this.client.on("error", (err) => {
+    this.client.on('error', (err) => {
       this.log.error(err);
       process.exit(1);
     });
-    this.client.on("connect", () =>
-      this.log.success(`Successfully connected via ${this.initConfig.url}`),
-    );
+    this.client.on('connect', () => this.log.success(`Successfully connected via ${this.initConfig.url}`));
 
     await this.client.connect();
   }
+
+  // public pipe() {
+  //   const multipipe = this.client.multi();
+  //
+  // }
 
   public async set(key: string, value: any): Promise<void> {
     await this.client.set(key, JSON.stringify(value));
@@ -74,6 +77,19 @@ export class Redis {
 
   public async delete(key: string): Promise<void> {
     await this.client.del(key);
+  }
+
+  public async hSet<T extends Record<string, any>>(key: string, value: T): Promise<void> {
+    const map = new Map(Object.entries(value));
+    await this.client.hSet(key, map);
+  }
+
+  public async hGet(key: string, field: string): Promise<string | null> {
+    return this.client.hGet(key, field);
+  }
+
+  public async hDelete(key: string, field: string): Promise<void> {
+    await this.client.hDel(key, field);
   }
 
   public async pushToList(key: string, value: any): Promise<void> {

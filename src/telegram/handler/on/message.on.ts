@@ -1,58 +1,41 @@
-import { Context } from "telegraf";
-import { REACTION } from "../../const.js";
-import type { PendingMessage } from "../../type";
-import { Message } from "telegraf/types";
-import { CONFIG } from "../../../config.js";
-import { BUTTONS_MARKUP } from "../../common/button/button.const.js";
-import { TgStorage } from "../../storage/storage.service.js";
-import Logger from "jblog";
+import { Context } from 'telegraf';
+import Logger from 'jblog';
+import crypto from 'crypto';
+import { REACTION } from '../../const.js';
+import type { PostData } from '../../type';
+import { Message } from 'telegraf/types';
+import { CONFIG } from '../../../config.js';
+import { BUTTONS_MARKUP } from '../../common/button/button.const.js';
+import { TgStorage } from '../../storage/storage.service.js';
 
-const log = new Logger({ scopes: ["HANDLE_MESSAGE"] });
+const log = new Logger({ scopes: ['HANDLE_MESSAGE'] });
 
-async function processIncomingMessage(
-  ctx: Context,
-  message: Message.AnimationMessage,
-) {
+async function processIncomingMessage(ctx: Context, message: Message.AnimationMessage) {
   const from = message.from!;
   const chat = ctx.chat!;
+  const newPostUUID = crypto.randomUUID();
 
-  await ctx.telegram.setMessageReaction(
-    chat.id,
-    message.message_id,
-    REACTION.WAIT,
-    true,
-  );
+  await ctx.telegram.setMessageReaction(chat.id, message.message_id, REACTION.WAIT, true);
 
   const origCaption =
-    typeof message.caption === "string" && message.caption.trim().length > 0
-      ? message.caption.trim()
-      : "";
-  const reviewMsg = await ctx.telegram.copyMessage(
-    CONFIG.TG_SUGGESTION_CHAT_ID,
-    chat.id,
-    message.message_id,
-  );
+    typeof message.caption === 'string' && message.caption.trim().length > 0 ? message.caption.trim() : '';
+  const reviewMsg = await ctx.telegram.copyMessage(CONFIG.TG_SUGGESTION_CHAT_ID, chat.id, message.message_id);
 
-  const headerText = `📥 Пост от @${from.username || from.first_name} (id: ${from.id} / id сообщения: ${message.message_id}):`;
-  const actionsMsg = await ctx.telegram.sendMessage(
-    CONFIG.TG_SUGGESTION_CHAT_ID,
-    headerText,
-    {
-      reply_parameters: {
-        message_id: reviewMsg.message_id,
-      },
-      ...BUTTONS_MARKUP.ACCEPT_OR_REJECT(reviewMsg.message_id),
+  const headerText = `📥 Пост от @${from.username || from.first_name} (id: ${newPostUUID}):`;
+  const actionsMsg = await ctx.telegram.sendMessage(CONFIG.TG_SUGGESTION_CHAT_ID, headerText, {
+    reply_parameters: {
+      message_id: reviewMsg.message_id,
     },
-  );
+    ...BUTTONS_MARKUP.ACCEPT_OR_REJECT(newPostUUID),
+  });
 
-  const pending: PendingMessage = {
+  const pending: PostData = {
+    id: newPostUUID,
     original: {
       chatId: chat.id,
       messageId: message.message_id,
       caption: origCaption,
-      username: message.from?.username
-        ? `@${message.from.username}`
-        : `ID: ${message.from?.id}`,
+      username: message.from?.username ? `@${message.from.username}` : `ID: ${message.from?.id}`,
     },
     review: {
       messageId: reviewMsg.message_id,
@@ -60,54 +43,37 @@ async function processIncomingMessage(
     },
   };
 
-  await TgStorage.add(reviewMsg.message_id, pending);
+  await TgStorage.add(pending);
 }
 
-async function processEditedMessage(
-  ctx: Context,
-  message: Message.AnimationMessage,
-) {
+async function processEditedMessage(ctx: Context, message: Message.AnimationMessage) {
   const from = message.from!;
   const chat = ctx.chat!;
   const username = from?.username ? `@${from.username}` : `ID: ${from?.id}`;
 
-  const postData = await TgStorage.findByOriginalID(
-    chat.id,
-    message.message_id,
-  );
+  const postData = await TgStorage.find(chat.id, message.message_id);
   if (!postData) {
     log.warn(
-      `No post data found while handling "edited_message" for User: ${username}, ChatID: ${chat.id}, MessageID: ${message.message_id}`,
+      `No post data found while handling "edited_message" for User: ${username}, ChatID: ${chat.id}, MessageID: ${message.message_id}`
     );
     return;
   }
 
-  await ctx.telegram.setMessageReaction(
-    chat.id,
-    message.message_id,
-    REACTION.PROCESSING,
-    true,
-  );
+  await ctx.telegram.setMessageReaction(chat.id, message.message_id, REACTION.PROCESSING, true);
   await new Promise((resolve) => setTimeout(resolve, 2_000)); // Some delay to show the reaction
-  await ctx.telegram.setMessageReaction(
-    chat.id,
-    message.message_id,
-    REACTION.WAIT,
-    true,
-  );
+  await ctx.telegram.setMessageReaction(chat.id, message.message_id, REACTION.WAIT, true);
 
   const editedCaption =
-    typeof message.caption === "string" && message.caption.trim().length > 0
-      ? message.caption.trim()
-      : "";
+    typeof message.caption === 'string' && message.caption.trim().length > 0 ? message.caption.trim() : '';
   await ctx.telegram.editMessageCaption(
     CONFIG.TG_SUGGESTION_CHAT_ID,
     postData.review.messageId,
     undefined,
-    editedCaption,
+    editedCaption
   );
 
-  const pending: PendingMessage = {
+  const pending: PostData = {
+    id: postData.id,
     original: {
       chatId: chat.id,
       messageId: message.message_id,
@@ -120,7 +86,7 @@ async function processEditedMessage(
     },
   };
 
-  await TgStorage.add(postData.review.messageId, pending);
+  await TgStorage.add(pending);
 }
 
 export async function handleMessage(ctx: Context) {

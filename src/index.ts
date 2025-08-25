@@ -1,6 +1,6 @@
-import { Telegram } from "./telegram/index.js";
-import { CONFIG } from "./config.js";
-import { Redis } from "./redis/redis.service.js";
+import { Telegram } from './telegram/index.js';
+import { CONFIG } from './config.js';
+import { Redis } from './redis/redis.service.js';
 
 async function bootstrap() {
   await Redis.init({

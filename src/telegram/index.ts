@@ -1,24 +1,24 @@
-import { Telegraf, Context } from "telegraf";
-import Logger from "jblog";
-import { handleEditedMessage, handleMessage } from "./handler/on/message.on.js";
+import { Telegraf, Context } from 'telegraf';
+import Logger from 'jblog';
+import { handleEditedMessage, handleMessage } from './handler/on/message.on.js';
 import {
   handleAccept,
   handleMainMenu,
   handlePostInTime,
   handlePostNow,
   handleReject,
-} from "./handler/action/accept-n-reject.action.js";
-import { validateAnimationMsg } from "./middleware/validate.filter.js";
-import { commandStart } from "./handler/command/start.command.js";
-import { CONFIG } from "../config.js";
-import { commandFlush } from "./handler/command/flush.command.js";
-import { adminGuard } from "./middleware/admin.guard.js";
-import { commandHelp } from "./handler/command/help.command.js";
-import { Post } from "./post/post.js";
-import { Scheduler } from "../scheduler/scheduler.js";
-import { commandQueue } from "./handler/command/queue.command.js";
-import { postDataEnricher } from "./middleware/postdata.enricher.js";
-import { CronJob } from "cron";
+} from './handler/action/accept-n-reject.action.js';
+import { validateAnimationMsg } from './middleware/validate.filter.js';
+import { commandStart } from './handler/command/start.command.js';
+import { CONFIG } from '../config.js';
+import { commandFlush } from './handler/command/flush.command.js';
+import { adminGuard } from './middleware/admin.guard.js';
+import { commandHelp } from './handler/command/help.command.js';
+import { Post } from './post/post.js';
+import { Scheduler } from '../scheduler/scheduler.js';
+import { commandQueue } from './handler/command/queue.command.js';
+import { postDataEnricher } from './middleware/postdata.enricher.js';
+import { CronJob } from 'cron';
 
 export class Telegram {
   private readonly log: Logger = new Logger({
@@ -41,40 +41,45 @@ export class Telegram {
     });
 
     CronJob.from({
-      cronTime: "0 10,17 * * *", // 10:00, 17:00
-      onTick: () => {
-        this.scheduler.process();
-      },
+      cronTime: '0 10,17 * * *', // 10:00, 17:00
+      onTick: () => this.scheduler.process(),
       start: true,
-      timeZone: 'Europe/Moscow'
+      timeZone: 'Europe/Moscow',
     }).start();
 
-    this.bot.command("start", commandStart);
-    this.bot.command("help", commandHelp);
-    this.bot.command("flush", adminGuard, commandFlush);
-    this.bot.command("queue", adminGuard, (ctx) =>
-      commandQueue(ctx, this.scheduler),
-    );
+    // Log each incoming update in a robust, type-safe way
+    this.bot.use((ctx: Context, next) => {
+      const updateType = ctx.updateType;
+      const subtypes = Array.isArray((ctx as any).updateSubTypes) ? (ctx as any).updateSubTypes.join(',') : '';
+      const updateId = (ctx.update as any)?.update_id;
+      const messageId = (ctx as any).message?.message_id ?? (ctx as any).callbackQuery?.id ?? (ctx as any).editedMessage?.message_id;
+      const chatId = (ctx.chat as any)?.id;
+      const fromId = ctx.from?.id;
+      const username = ctx.from?.username ? `@${ctx.from.username}` : '';
 
-    this.bot.on("message", validateAnimationMsg, handleMessage);
-    this.bot.on("edited_message", validateAnimationMsg, handleEditedMessage);
+      this.log.info(
+        `Incoming update: type=${updateType}${subtypes ? ` subtypes=${subtypes}` : ''} update_id=${updateId ?? 'n/a'} msg_id=${messageId ?? 'n/a'} chat=${chatId ?? 'n/a'} from=${fromId ?? 'n/a'} ${username}`
+      );
+
+      return next();
+    });
+
+    this.bot.command('start', commandStart);
+    this.bot.command('help', commandHelp);
+    this.bot.command('flush', adminGuard, commandFlush);
+    this.bot.command('queue', adminGuard, (ctx) => commandQueue(ctx, this.scheduler));
+
+    this.bot.on('message', validateAnimationMsg, handleMessage);
+    this.bot.on('edited_message', validateAnimationMsg, handleEditedMessage);
 
     this.bot.action(/accept:(\d+)/, postDataEnricher, handleAccept);
-    this.bot.action(/reject:(\d+)/, postDataEnricher, (ctx) =>
-      handleReject(ctx, this.postService),
-    );
+    this.bot.action(/reject:(\d+)/, postDataEnricher, (ctx) => handleReject(ctx, this.postService));
 
-    this.bot.action(/post_now:(\d+)/, postDataEnricher, (ctx) =>
-      handlePostNow(ctx, this.postService),
-    );
-    this.bot.action(/post_in_time:(\d+)/, postDataEnricher, (ctx) =>
-      handlePostInTime(ctx, this.scheduler),
-    );
+    this.bot.action(/post_now:(\d+)/, postDataEnricher, (ctx) => handlePostNow(ctx, this.postService));
+    this.bot.action(/post_in_time:(\d+)/, postDataEnricher, (ctx) => handlePostInTime(ctx, this.scheduler));
 
     this.bot.action(/main_menu:(\d+)/, postDataEnricher, handleMainMenu);
 
-    await this.bot.launch(() => {
-      this.log.success("Bot started successfully");
-    });
+    await this.bot.launch(() => this.log.success('Bot started successfully'));
   }
 }

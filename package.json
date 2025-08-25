@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "tsc && node dist/index.js",
-    "dev": "ts-node-dev --respawn src/index.ts"
+    "start:dev": "tsc && node dist/index.js",
+    "start:prod": "node dist/index.js",
+    "dev": "npx tsx watch src/index.ts",
+    "format": "prettier --write \"**/*.{js,ts}\""
   },
   "dependencies": {
     "cron": "^4.3.3",
@@ -16,7 +18,9 @@
     "telegraf": "^4.16.3"
   },
   "devDependencies": {
-    "ts-node-dev": "^2.0.0",
+    "@types/node": "^24.3.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.8.3"
   }
 }

@@ -1,54 +1,70 @@
-import { Redis } from "../../redis/redis.service.js";
-import { PendingMessage } from "../type";
+import { Redis } from '../../redis/redis.service.js';
+import { PostData } from '../type';
+import { CONFIG } from '../../config.js';
+
+type lookup = 'original' | 'review' | 'archive';
+const LOOKUPS_LIST: lookup[] = ['original', 'review', 'archive'];
 
 const GET_POST_KEY = (id: string | number) => {
   return `post_id:${id}`;
 };
-const GET_ORIGINAL_POST_KEY = (
-  chat_id: string | number,
-  message_id: string | number,
-) => {
-  return `original_id:${chat_id}:${message_id}`;
+const GET_LOOKUP_POST_KEY = (type: lookup) => {
+  return `lookup:${type}`;
+};
+const GET_CHAT_POST_COMMON_KEY = (chat_id: string | number, message_id: string | number) => {
+  return `${chat_id}:${message_id}`;
 };
 
 export class TgStorage {
-  static async add(
-    postID: string | number,
-    data: PendingMessage,
-  ): Promise<void> {
+  static async add(post: PostData): Promise<void> {
     const redis = Redis.getInstance();
-    await redis.set(GET_POST_KEY(postID), data);
-    await redis.set(
-      GET_ORIGINAL_POST_KEY(data.original.chatId, data.original.messageId),
-      postID,
-    );
+    await redis.set(GET_POST_KEY(post.id), post);
+
+    await redis.hSet(GET_LOOKUP_POST_KEY('original'), {
+      [GET_CHAT_POST_COMMON_KEY(post.original.chatId, post.original.messageId)]: post.id,
+    });
+    await redis.hSet(GET_LOOKUP_POST_KEY('review'), {
+      [GET_CHAT_POST_COMMON_KEY(CONFIG.TG_SUGGESTION_CHAT_ID, post.review.messageId)]: post.id,
+    });
+    if (post.archive) {
+      await redis.hSet(GET_LOOKUP_POST_KEY('archive'), {
+        [GET_CHAT_POST_COMMON_KEY(CONFIG.TG_SUGGESTION_CHAT_ID, post.archive.messageId)]: post.id,
+      });
+    }
   }
 
-  static async findByPostID(
-    postID: string | number,
-  ): Promise<PendingMessage | null> {
-    return Redis.getInstance().get(GET_POST_KEY(postID));
+  static async findById(id: string): Promise<PostData | null> {
+    return Redis.getInstance().get(GET_POST_KEY(id));
   }
 
-  static async findByOriginalID(
-    chatID: string | number,
-    messageID: string | number,
-  ): Promise<PendingMessage | null> {
-    const postID = await Redis.getInstance().get<string>(
-      GET_ORIGINAL_POST_KEY(chatID, messageID),
-    );
-    if (!postID) return null;
+  static async find(chatID: string | number, messageID: string | number): Promise<PostData | null> {
+    const redis = Redis.getInstance();
+    const postId = await redis.hGet(GET_LOOKUP_POST_KEY('original'), GET_CHAT_POST_COMMON_KEY(chatID, messageID));
+    if (!postId) return null;
 
-    return TgStorage.findByPostID(postID);
+    return this.findById(postId);
   }
 
-  static async delete(postID: string | number): Promise<void> {
-    const data = await TgStorage.findByPostID(postID);
-    if (!data) return;
+  static async delete(postID: string): Promise<void> {
+    const post = await TgStorage.findById(postID);
+    if (!post) return;
 
-    await Redis.getInstance().delete(GET_POST_KEY(postID));
-    await Redis.getInstance().delete(
-      GET_ORIGINAL_POST_KEY(data.original.chatId, data.original.messageId),
+    const redis = Redis.getInstance();
+    await redis.delete(post.id);
+
+    await redis.hDelete(
+      GET_LOOKUP_POST_KEY('original'),
+      GET_CHAT_POST_COMMON_KEY(post.original.chatId, post.original.messageId)
     );
+    await redis.hDelete(
+      GET_LOOKUP_POST_KEY('review'),
+      GET_CHAT_POST_COMMON_KEY(CONFIG.TG_SUGGESTION_CHAT_ID, post.review.messageId)
+    );
+    if (post.archive) {
+      await redis.hDelete(
+        GET_LOOKUP_POST_KEY('archive'),
+        GET_CHAT_POST_COMMON_KEY(CONFIG.TG_SUGGESTION_CHAT_ID, post.archive.messageId)
+      );
+    }
   }
 }

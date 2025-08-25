@@ -1,10 +1,12 @@
-import Logger from "jblog";
-import { Telegraf, TelegramError } from "telegraf";
-import { PendingMessage } from "../type";
-import { ReactionTypeEmoji } from "telegraf/types";
-import { CONFIG } from "../../config.js";
-import { TgStorage } from "../storage/storage.service.js";
-import { REACTION } from "../const.js";
+import Logger from 'jblog';
+import { Telegraf } from 'telegraf';
+import { PostData } from '../type';
+import { ReactionTypeEmoji } from 'telegraf/types';
+import { CONFIG } from '../../config.js';
+import { TgStorage } from '../storage/storage.service.js';
+import { REACTION } from '../const.js';
+import { POST_RESULT } from './post.const.js';
+import { getCleanUpMessage, handleNotFoundErr } from './post.util.js';
 
 export class Post {
   private readonly log: Logger = new Logger({
@@ -14,125 +16,75 @@ export class Post {
   constructor(private readonly bot: Telegraf) {}
 
   /** Public */
-  public async accept(from: string, post: PendingMessage) {
-    await this.setReaction(
-      REACTION.ACCEPT,
-      post.original.chatId,
-      post.original.messageId,
-    );
+  public async accept(post: PostData) {
+    await this.setReaction(REACTION.ACCEPT, post.original.chatId, post.original.messageId);
 
     const updatedCaption =
       `${post.original.caption}\n\n` +
       `👤 Автор: ${post.original.username}` +
       ` | <a href="https://t.me/${await this.bot.telegram.getMe()}">Предложка</a>`;
+    this.log.info('post:', post);
+
     await this.bot.telegram.copyMessage(
       CONFIG.TG_TARGET_CHANNEL_ID,
       CONFIG.TG_SUGGESTION_CHAT_ID,
-      post.review.messageId,
+      post.archive ? post.archive.messageId : post.review.messageId,
       {
         caption: updatedCaption,
-        parse_mode: "HTML",
-      },
+        parse_mode: 'HTML',
+      }
     );
 
-    await this.cleanUp(from, post, REACTION.ACCEPT[0]);
+    await this.cleanUp(post, POST_RESULT.ACCEPTED);
   }
 
-  public async reject(from: string, post: PendingMessage) {
-    await this.setReaction(
-      REACTION.REJECT,
-      post.original.chatId,
-      post.original.messageId,
-    );
+  public async reject(post: PostData) {
+    await this.setReaction(REACTION.REJECT, post.original.chatId, post.original.messageId);
 
-    await this.cleanUp(from, post, REACTION.REJECT[0]);
+    await this.cleanUp(post, POST_RESULT.REJECTED);
   }
 
-  public async postpone(post: PendingMessage) {
-    await this.setReaction(
-      REACTION.POSTPONED,
-      post.original.chatId,
-      post.original.messageId,
-    );
+  public async postpone(post: PostData) {
+    await this.setReaction(REACTION.POSTPONED, post.original.chatId, post.original.messageId);
 
-    await this.bot.telegram.editMessageCaption(
-      CONFIG.TG_SUGGESTION_CHAT_ID,
-      post.review.messageId,
-      undefined,
-      `${post.original.caption}\n\n` +
-        `<blockquote>Пост в отложке (by @${post.admin?.username})</blockquote>`,
-      {
-        parse_mode: "HTML",
-      },
-    );
-
-    await this.bot.telegram
-      .deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, post.review.buttonsMsgId)
-      .catch((err) => {
-        if (
-          (err instanceof TelegramError &&
-            err.description.includes("message to delete not found")) ||
-          err.description.includes("message not found")
-        ) {
-          return false;
-        }
-        throw err;
-      });
+    await this.cleanUp(post, POST_RESULT.POSTPONED);
   }
 
   /** Private */
-  private async cleanUp(
-    from: string,
-    post: PendingMessage,
-    reaction: ReactionTypeEmoji,
-  ): Promise<void> {
-    const { original, review } = post;
+  private async cleanUp(post: PostData, result: POST_RESULT): Promise<void> {
+    if (post.archive) {
+      await this.bot.telegram
+        .editMessageCaption(
+          CONFIG.TG_SUGGESTION_CHAT_ID,
+          post.archive.messageId,
+          undefined,
+          getCleanUpMessage(post, result),
+          {
+            parse_mode: 'HTML',
+          }
+        )
+        .catch(handleNotFoundErr);
+    } else {
+      const archiveMsg = await this.bot.telegram
+        .copyMessage(CONFIG.TG_SUGGESTION_CHAT_ID, CONFIG.TG_SUGGESTION_CHAT_ID, post.review.messageId, {
+          caption: getCleanUpMessage(post, result),
+          parse_mode: 'HTML',
+          message_thread_id: 1241,
+        })
+        .catch(handleNotFoundErr);
+      if (!archiveMsg) return;
+      await TgStorage.add({ ...post, archive: { messageId: archiveMsg.message_id } });
+    }
 
-    await this.bot.telegram.editMessageCaption(
-      CONFIG.TG_SUGGESTION_CHAT_ID,
-      review.messageId,
-      undefined,
-      `${original.caption}\n\n` +
-        `<blockquote>Пост от ${original.username}. Решение: "${reaction.emoji}" (by @${from})</blockquote>`,
-      {
-        parse_mode: "HTML",
-      },
-    );
     await this.bot.telegram
-      .deleteMessage(CONFIG.TG_SUGGESTION_CHAT_ID, post.review.buttonsMsgId)
-      .catch((err) => {
-        if (
-          (err instanceof TelegramError &&
-            err.description.includes("message to delete not found")) ||
-          err.description.includes("message not found")
-        ) {
-          return false;
-        }
-        throw err;
-      });
+      .deleteMessages(CONFIG.TG_SUGGESTION_CHAT_ID, [post.review.messageId, post.review.buttonsMsgId])
+      .catch(handleNotFoundErr);
 
-    await TgStorage.delete(review.messageId);
+    if (result === POST_RESULT.POSTPONED) return;
+    await TgStorage.delete(post.id);
   }
 
-  private async setReaction(
-    reaction: ReactionTypeEmoji[],
-    chatId: string | number,
-    messageId: number,
-  ): Promise<void> {
-    const postAlreadyDeletedTgErrorDescription =
-      "Bad Request: message to react not found";
-    await this.bot.telegram
-      .setMessageReaction(chatId, messageId, reaction, true)
-      .catch((err) => {
-        if (
-          err instanceof TelegramError &&
-          err.description.trim() === postAlreadyDeletedTgErrorDescription
-        ) {
-          return this.log.warn(
-            `Post in ${chatId} chat with ${messageId} messageID was already deleted`,
-          );
-        }
-        throw err;
-      });
+  private async setReaction(reaction: ReactionTypeEmoji[], chatId: string | number, messageId: number): Promise<void> {
+    await this.bot.telegram.setMessageReaction(chatId, messageId, reaction, true).catch(handleNotFoundErr);
   }
 }

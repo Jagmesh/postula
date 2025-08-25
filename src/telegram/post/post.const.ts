@@ -1,0 +1,5 @@
+export enum POST_RESULT {
+  ACCEPTED,
+  REJECTED,
+  POSTPONED,
+}
