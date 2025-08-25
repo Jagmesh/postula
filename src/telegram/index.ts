@@ -19,7 +19,7 @@ import { Scheduler } from '../scheduler/scheduler.js';
 import { commandQueue } from './handler/command/queue.command.js';
 import { postDataEnricher } from './middleware/postdata.enricher.js';
 import { CronJob } from 'cron';
-import { newActionRegexp } from './handler/action/action.const';
+import { newActionRegexp } from './handler/action/action.const.js';
 
 export class Telegram {
   private readonly log: Logger = new Logger({
@@ -45,10 +45,9 @@ export class Telegram {
         start: true,
         timeZone: CONFIG.TG_POSTPONED_POSTS_TIMEZONE,
       });
-      this.log.success(`Cronjob on ${job.cronTime} (for ${job.cronTime.timeZone}) registered`)
+      this.log.success(`Cronjob on ${job.cronTime} (for ${job.cronTime.timeZone}) registered`);
       job.start();
     }
-
 
     this.bot.catch((err: unknown, ctx: Context) => {
       const errMsg = `update_id:${ctx.update.update_id}. ❌ Error occurred: ${err}`;
