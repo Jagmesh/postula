@@ -1,6 +1,6 @@
 {
   "name": "postula",
-  "version": "0.2.7",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
     "start:prod": "node dist/index.js",
     "dev": "npx tsx watch src/index.ts",
     "format": "prettier --write \"**/*.{js,ts}\"",
-    "release": "standard-version"
+    "release": "commit-and-tag-version"
   },
   "dependencies": {
     "cron": "^4.3.3",
@@ -20,8 +20,8 @@
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
+    "commit-and-tag-version": "^12.6.0",
     "prettier": "^3.6.2",
-    "standard-version": "^9.5.0",
     "tsx": "^4.20.5",
     "typescript": "^5.8.3"
   }
