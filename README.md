@@ -52,6 +52,8 @@ docker build -t postula:latest .
 docker run postula:latest
 ```
 
+¯\_(ツ)_/¯
+
 ---
 ## License
 

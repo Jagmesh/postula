@@ -1,4 +1,3 @@
-import Logger from 'jblog';
 import { Telegraf } from 'telegraf';
 import { PostData } from '../type';
 import { ReactionTypeEmoji } from 'telegraf/types';
