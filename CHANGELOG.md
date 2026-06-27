@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.5](https://github.com/Jagmesh/postula/compare/v0.2.4...v0.2.5) (2026-06-27)
+
 ## [0.2.4](https://github.com/Jagmesh/postula/compare/v0.2.3...v0.2.4) (2026-06-09)
 
 ## [0.2.3](https://github.com/Jagmesh/postula/compare/v0.2.2...v0.2.3) (2026-04-30)
